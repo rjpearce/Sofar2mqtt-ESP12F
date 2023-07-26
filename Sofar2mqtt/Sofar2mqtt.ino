@@ -9,13 +9,39 @@ unsigned int screenDimTimer = 30; //dim screen after 30 secs
 unsigned long lastScreenTouch = 0;
 
 
-#include <DoubleResetDetect.h>
+#define ESP_DRD_USE_SPIFFS true
+#include <ESP_DoubleResetDetector.h>  
 #define DRD_TIMEOUT 0.1
 #define DRD_ADDRESS 0x00
-DoubleResetDetect drd(DRD_TIMEOUT, DRD_ADDRESS);
+DoubleResetDetector* drd;
 
 
+
+#if defined(ESP8266)
+// Wifi parameters.
+#include <ESP8266WiFi.h>
+WiFiClient wifi;
+
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+#include <ESP8266HTTPUpdateServer.h>
+ESP8266WebServer httpServer(80);
+ESP8266HTTPUpdateServer httpUpdater;
+
+#elif defined(ESP32)
 #include <WiFiManager.h>
+// Wifi parameters.
+#include <WiFi.h>
+WiFiClient wifi;
+
+#include <WebServer.h>
+#include <ESPmDNS.h>
+#include <HTTPUpdateServer.h>
+
+WebServer httpServer(80);
+HTTPUpdateServer httpUpdater;
+#endif
+
 #include <EEPROM.h>
 #define PORTAL_TIMEOUT 300 //reboots device if hotspot isn't configured after this time
 #define WIFI_TIMEOUT 60 //try this long to connect to existing wifi before going to hotspot portal mode
@@ -35,7 +61,7 @@ unsigned long lastMqttReconnectAttempt = 0;
   Sofar2mqtt is a remote control interface for Sofar solar and battery inverters.
   It allows remote control of the inverter and reports the invertor status, power usage, battery state etc for integration with smart home systems such as Home Assistant and Node-Red vi MQTT.
   For read only mode, it will send status messages without the inverter needing to be in passive mode.
-  It's designed to run on an ESP8266 microcontroller with a TTL to RS485 module such as MAX485 or MAX3485.
+  It's designed to run on an ESP8266 and ESP32-c3 microcontroller with a TTL to RS485 module such as MAX485 or MAX3485.
   Designed to work with TTL modules with or without the DR and RE flow control pins. If your TTL module does not have these pins then just ignore the wire from D5.
 
   Subscribe your MQTT client to:
@@ -107,15 +133,6 @@ unsigned long lastMqttReconnectAttempt = 0;
 #define MAX_POWER		3000 //maybe change in further models
 
 #define RS485_TRIES 8       // x 50mS to wait for RS485 input chars.
-// Wifi parameters.
-#include <ESP8266WiFi.h>
-WiFiClient wifi;
-
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
-#include <ESP8266HTTPUpdateServer.h>
-ESP8266WebServer httpServer(80);
-ESP8266HTTPUpdateServer httpUpdater;
 
 char jsonstring[1000];
 
@@ -127,11 +144,11 @@ PubSubClient mqtt(wifi);
 // The built-in serial port remains available for flashing and debugging.
 #include <SoftwareSerial.h>
 //for OLED version default to original sofar2mqtt ports
-#define SERIAL_COMMUNICATION_CONTROL_PIN D5 // Transmission set pin OLED version
+#define SERIAL_COMMUNICATION_CONTROL_PIN 14 // Transmission set pin OLED version
 #define RS485_TX HIGH
 #define RS485_RX LOW
-#define OLEDRXPin    D6  // Serial Receive pin OLED version
-#define OLEDTXPin    D7  // Serial Transmit pin OLED version
+#define OLEDRXPin    12  // Serial Receive pin OLED version
+#define OLEDTXPin    13  // Serial Transmit pin OLED version
 SoftwareSerial RS485Serial(OLEDRXPin, OLEDTXPin);
 
 //for TFT verion we use the hardware serial (pin 3 and 1)
@@ -398,16 +415,37 @@ static struct mqtt_status_register  mqtt_status_reads[] =
 
 //for the tft
 #include <Adafruit_ILI9341.h>   // include Adafruit ILI9341 TFT library
-#define TFT_CS    D1     // TFT CS  pin is connected to arduino pin 8
-#define TFT_DC    D2     // TFT DC  pin is connected to arduino pin 10
+#if defined(ESP8266)
+#define TFT_CS    D1
+#define TFT_DC    D2
 #define TFT_LED   D8
+#define TFT_MOSI 13
+#define TFT_MISO 12
+#define TFT_SCLK 14
 // initialize ILI9341 TFT library
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
+#elif defined(ESP32)
+#define TFT_CS    1
+#define TFT_DC    4
+#define TFT_LED   5
+#define TFT_MOSI 7
+#define TFT_MISO 2
+#define TFT_SCLK 6
+#define TFT_RST 10
+// initialize ILI9341 TFT library
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
+#endif
+
 
 //for touch
 #include <XPT2046_Touchscreen.h>
+#if defined(ESP8266)
 #define TCS_PIN  0
 #define TIRQ_PIN  2
+#elif defined(ESP32)
+#define TCS_PIN  0
+#define TIRQ_PIN  3
+#endif
 XPT2046_Touchscreen ts(TCS_PIN, TIRQ_PIN);
 
 //for the oled
@@ -563,7 +601,12 @@ void saveToEeprom() {
   EEPROM.write(202, screenDimTimer); // * 202
   EEPROM.write(203, separateMqttTopics); // * 203
   EEPROM.commit();
-  ESP.reset(); // reset after save to activate new settings
+  // reset after save to activate new settings
+#if defined(ESP8266)
+  ESP.reset();
+#elif defined(ESP32)
+  ESP.restart();
+#endif
 }
 
 bool loadFromEeprom() {
@@ -716,7 +759,11 @@ void setup_wifi()
       updateOLED("NULL", "NULL", "WiFi.!.", "NULL");
     }
     // * Reset and try again, or maybe put it to deep sleep
+#if defined(ESP8266)
     ESP.reset();
+#elif defined(ESP32)
+    ESP.restart();
+#endif
   }
 
   // * Read updated parameters
@@ -1038,7 +1085,7 @@ void mqttCallback(String topic, byte *message, unsigned int length)
 
   }
 
-  if ((cmd == "threephaselimit") || (cmd == "antireflux")) { 
+  if ((cmd == "threephaselimit") || (cmd == "antireflux")) {
     uint16_t addr = inverterModel == HYDV2 ? SOFAR2_ANTIREFLUX_CONTROL : SOFAR_ANTIREFLUX_CONTROL;
     if (messageTemp == "off") {
       modbusResponse  rs;
@@ -1229,7 +1276,7 @@ void batterySave()
   }
 }
 
-// This function reconnects the ESP8266 to the MQTT broker
+// This function reconnects the module to the MQTT broker
 void mqttReconnect()
 {
   unsigned long now = millis();
@@ -1806,7 +1853,11 @@ void handleCommand() {
     if ((httpServer.argName(i) == "reset") || (httpServer.argName(i) == "restart") || (httpServer.argName(i) == "reboot") || ((httpServer.argName(i) == "reload"))) {
       httpServer.send(200, "text/html", "<html><head><meta http-equiv=\"refresh\" content=\"2; URL=/\" /></head><body>Restarting!</body></html>");
       delay(1000);
+#if defined(ESP8266)
       ESP.reset();
+#elif defined(ESP32)
+      ESP.restart();
+#endif
     } else if (httpServer.argName(i) == "factoryreset") {
       httpServer.send(200, "text/html", "<html><head><meta http-equiv=\"refresh\" content=\"2; URL=/\" /></head><body>Factory reset! Please reconfig using wifi hotspot!</body></html>");
       delay(1000);
@@ -1896,7 +1947,9 @@ void handleCommand() {
 
 void resetConfig() {
   //initiate debug led indication for factory reset
+  #if defined(ESP8266)
   pinMode(2, FUNCTION_0); //set it as gpio
+  #endif
   pinMode(2, OUTPUT);
   digitalWrite(2, LOW); //blue led on
   if (tftModel) {
@@ -1929,7 +1982,8 @@ void resetConfig() {
 }
 
 void doubleResetDetect() {
-  if (drd.detect()) {
+  drd = new DoubleResetDetector(DRD_TIMEOUT, DRD_ADDRESS);
+  if (drd->detectDoubleReset()) {
     if (tftModel) {
       tft.begin();
       tft.setRotation(2);
@@ -1944,12 +1998,12 @@ void setup()
   EEPROM.begin(512);
   if (!loadFromEeprom()) { //we don't have config yet, switch between lcd models after each reset
     tftModel = true;
-    if (EEPROM.read(200)) tftModel = false; //previous reboot we selected TFT model, now switch to OLED
+    if (EEPROM.read(200)) tftModel = true; //previous reboot we selected TFT model, now switch to OLED
     EEPROM.write(200, tftModel); // * 200
     EEPROM.commit();
   }
   doubleResetDetect(); //detect factory reset first
-
+  tftModel = true;
   if (tftModel) {
     tft.begin();
     tft.setRotation(2);
@@ -2043,7 +2097,9 @@ void tsLoop() {
 void loopRuns() {
   ArduinoOTA.handle();
   httpServer.handleClient();
+  #if defined(ESP8266)
   MDNS.update();
+  #endif
   tsLoop();
 }
 
