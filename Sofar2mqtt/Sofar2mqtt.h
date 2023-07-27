@@ -709,14 +709,14 @@ const char index_html[] PROGMEM = R"=====(
 
     function rebootDevice() {
       if (confirm("Are you sure you want to reboot this device?") == true) {
-        $.get("/command?reboot");
+        $.get("/command?reboot=");
         alert("Device is rebooting...");
       }
     }
     
     function factoryReset() {
       if (confirm("Are you sure you want to factory reset this device?") == true) {
-        $.get("/command?factoryreset");
+        $.get("/command?factoryreset=");
         alert("Factory reset in progress. Reconnect to hotspot to reconfigure.");
       }
     }
@@ -1198,7 +1198,7 @@ const char settings_html_new[] PROGMEM = R"=====(
       'mqttuser': 'MQTT user is the username used for authentication when connecting to the MQTT broker.',
       'mqttpass': 'MQTT pass is the password used for authentication when connecting to the MQTT broker.',
       'inverterModel': 'Inverter type is the model of the inverter used in the system. The EP and KTL matches the new 1 phase and 3 phase models.',
-      'tftModel': 'Screen type refers to the type of display used by the module. Select the OLED type if you use the older small OLED on a Wemos example.',
+      'tftModel': 'Screen type refers to the type of display used by the module. Select the OLED type if you use the older small OLED on a Wemos example. For the new ESP32 model this will always stay at TFT.',
       'calculated': 'Data mode determines whether the data transmitted to the MQTT broker is raw or calculated values. Raw is to be compatible with older automation scripts where the positive/negative calculation is done there.',
       'screendimtimer': 'Screen dim timer is the time interval before the display dims. To keep the display on set the value to 0.',
       'separateMqttTopics': 'Separated MQTT topics per value determines whether separate MQTT topics are used for each value.'

@@ -1,7 +1,7 @@
 // The device name is used as the MQTT base topic. If you need more than one Sofar2mqtt on your network, give them unique names.
 const char* version = "v3.3-alpha11";
 
-bool tftModel = true; //true means 2.8" color tft, false for oled version
+bool tftModel = true; //true means 2.8" color tft, false for oled version. This is always true for ESP32 devices as we don't use oled device for esp32.
 
 bool calculated = true; //default to pre-calculated values before sending to mqtt
 
@@ -9,9 +9,9 @@ unsigned int screenDimTimer = 30; //dim screen after 30 secs
 unsigned long lastScreenTouch = 0;
 
 
-#define ESP_DRD_USE_SPIFFS true
-#include <ESP_DoubleResetDetector.h>  
-#define DRD_TIMEOUT 0.1
+#define ESP_DRD_USE_EEPROM true
+#include <ESP_DoubleResetDetector.h>
+#define DRD_TIMEOUT 5
 #define DRD_ADDRESS 0x00
 DoubleResetDetector* drd;
 
@@ -425,6 +425,7 @@ static struct mqtt_status_register  mqtt_status_reads[] =
 // initialize ILI9341 TFT library
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 #elif defined(ESP32)
+//make sure to change pins_arduino.h for your board to match MISO, MOSI, SCLK and CS for hardware SPI
 #define TFT_CS    1
 #define TFT_DC    4
 #define TFT_LED   5
@@ -626,7 +627,9 @@ bool loadFromEeprom() {
     } else if (EEPROM.read(199) == 2) {
       inverterModel = HYDV2;
     }
+#if defined(ESP8266)
     tftModel = EEPROM.read(200);
+#endif
     calculated = EEPROM.read(201);
     screenDimTimer = EEPROM.read(202);
     separateMqttTopics = EEPROM.read(203);
@@ -725,9 +728,11 @@ void setup_wifi()
   </script>
   )";
   WiFiManagerParameter custom_html_inputs(bufferStr);
+#if defined(ESP8266)
   char lcdModelString[6];
   sprintf(lcdModelString, "%u", uint8_t(tftModel));
   WiFiManagerParameter custom_hidden_lcd("key_custom_lcd", "LCD type hidden", lcdModelString, 2);
+#endif
   char inverterModelString[6];
   sprintf(inverterModelString, "%u", uint8_t(inverterModel));
   WiFiManagerParameter custom_hidden_inverter("key_custom_inverter", "Inverter type hidden", inverterModelString, 2);
@@ -739,7 +744,9 @@ void setup_wifi()
   wifiManager.setAPCallback(configModeCallback);
   wifiManager.setConfigPortalTimeout(PORTAL_TIMEOUT);
   wifiManager.setSaveConfigCallback(save_wifi_config_callback);
+#if defined(ESP8266)  
   wifiManager.addParameter(&custom_hidden_lcd);
+#endif
   wifiManager.addParameter(&custom_hidden_inverter);
   wifiManager.addParameter(&custom_hidden_mode);
   wifiManager.addParameter(&custom_html_inputs);
@@ -751,6 +758,8 @@ void setup_wifi()
 
 
   wifiManager.setConnectTimeout(WIFI_TIMEOUT);
+  //android fix, disable for now
+  //wifiManager.setAPStaticIPConfig(IPAddress(8,8,8,8), IPAddress(8,8,8,8), IPAddress(255,255,255,0));
   if (!wifiManager.autoConnect("Sofar2Mqtt"))
   {
     if (tftModel) {
@@ -772,7 +781,9 @@ void setup_wifi()
   strcpy(MQTT_PORT, CUSTOM_MQTT_PORT.getValue());
   strcpy(MQTT_USER, CUSTOM_MQTT_USER.getValue());
   strcpy(MQTT_PASS, CUSTOM_MQTT_PASS.getValue());
+#if defined(ESP8266)
   if (atoi(custom_hidden_lcd.getValue()) == 0) tftModel = false;
+#endif
   if (atoi(custom_hidden_inverter.getValue()) == 1) inverterModel = HYBRID;
   if (atoi(custom_hidden_inverter.getValue()) == 2) inverterModel = HYDV2;
 
@@ -1898,6 +1909,7 @@ void handleCommand() {
         inverterModel = HYDV2;
       }
       saveEeprom = true;
+#if defined(ESP8266)
     } else if (httpServer.argName(i) == "tftModel") {
       String value =  httpServer.arg(i);
       message += "Setting lcd type to: " + value + "<br>";
@@ -1907,6 +1919,7 @@ void handleCommand() {
         tftModel = true;
       }
       saveEeprom = true;
+#endif
     } else if (httpServer.argName(i) == "calculated") {
       String value =  httpServer.arg(i);
       message += "Setting calculated mode to: " + value + "<br>";
@@ -1947,9 +1960,9 @@ void handleCommand() {
 
 void resetConfig() {
   //initiate debug led indication for factory reset
-  #if defined(ESP8266)
+#if defined(ESP8266)
   pinMode(2, FUNCTION_0); //set it as gpio
-  #endif
+#endif
   pinMode(2, OUTPUT);
   digitalWrite(2, LOW); //blue led on
   if (tftModel) {
@@ -1960,9 +1973,9 @@ void resetConfig() {
     tft.setTextColor(ILI9341_RED, ILI9341_BLACK); // Red on black
     tft.println("Double reset detected, clearing config.");
   }
-  WiFi.persistent(true);
-  WiFi.disconnect();
-  WiFi.persistent(false);
+  //WiFi.persistent(true);
+  //WiFi.disconnect();
+  //WiFi.persistent(false);
   WiFiManager wifiManager;
   wifiManager.resetSettings();
   EEPROM.begin(512);
@@ -1996,14 +2009,17 @@ void setup()
 {
   // * Configure EEPROM an get initial settings
   EEPROM.begin(512);
-  if (!loadFromEeprom()) { //we don't have config yet, switch between lcd models after each reset
+#if defined(ESP8266)
+  if (!loadFromEeprom()) { //we don't have config yet, switch between lcd models after each reset, only for ESP8266
     tftModel = true;
-    if (EEPROM.read(200)) tftModel = true; //previous reboot we selected TFT model, now switch to OLED
+    if (EEPROM.read(200)) tftModel = false; //previous reboot we selected TFT model, now switch to OLED
     EEPROM.write(200, tftModel); // * 200
     EEPROM.commit();
   }
+#else
+  loadFromEeprom();
+#endif
   doubleResetDetect(); //detect factory reset first
-  tftModel = true;
   if (tftModel) {
     tft.begin();
     tft.setRotation(2);
@@ -2032,6 +2048,7 @@ void setup()
     RS485Serial.begin(9600);
   }
   delay(500);
+  drd->stop();
   setup_wifi(); //set wifi and get settings, so first thing to do
 
   if (tftModel) {
@@ -2097,9 +2114,9 @@ void tsLoop() {
 void loopRuns() {
   ArduinoOTA.handle();
   httpServer.handleClient();
-  #if defined(ESP8266)
+#if defined(ESP8266)
   MDNS.update();
-  #endif
+#endif
   tsLoop();
 }
 
