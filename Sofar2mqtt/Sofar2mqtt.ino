@@ -1,5 +1,5 @@
 // The device name is used as the MQTT base topic. If you need more than one Sofar2mqtt on your network, give them unique names.
-const char* version = "v3.3-alpha11";
+const char* version = "v3.3-alpha12";
 
 bool tftModel = true; //true means 2.8" color tft, false for oled version. This is always true for ESP32 devices as we don't use oled device for esp32.
 
@@ -19,6 +19,7 @@ DoubleResetDetector* drd;
 
 #if defined(ESP8266)
 // Wifi parameters.
+#include <WiFiManager.h>
 #include <ESP8266WiFi.h>
 WiFiClient wifi;
 
@@ -961,8 +962,8 @@ void retrieveData()
       if ((!modbusError) && ( readBulkReg(SOFAR_SLAVE_ID, ME3000_START, (ME3000_END - ME3000_START + 1), &rs) == 0)) {
         for (unsigned int l = 0; l < sizeof(mqtt_status_reads) / sizeof(struct mqtt_status_register); l++) {
           if (mqtt_status_reads[l].inverter == inverterModel) {
-            if (mqtt_status_reads[l].regnum == SOFAR2_WORKING_MODE) { //should be the last one so don't care if this one overwrites the result cache
-              if (readSingleReg(SOFAR_SLAVE_ID, SOFAR2_WORKING_MODE, &rs) == 0) {
+            if (mqtt_status_reads[l].regnum == SOFAR_WORKING_MODE) { //should be the last one so don't care if this one overwrites the result cache
+              if (readSingleReg(SOFAR_SLAVE_ID, SOFAR_WORKING_MODE, &rs) == 0) {
                 addStateInfo(state, l, 0, &rs);
               }
             } else {
@@ -977,8 +978,8 @@ void retrieveData()
       if ((!modbusError) && ( readBulkReg(SOFAR_SLAVE_ID, HYBRID_START, (HYBRID_END - HYBRID_START + 1), &rs) == 0)) {
         for (unsigned int l = 0; l < sizeof(mqtt_status_reads) / sizeof(struct mqtt_status_register); l++) {
           if (mqtt_status_reads[l].inverter == inverterModel) {
-            if (mqtt_status_reads[l].regnum == SOFAR2_WORKING_MODE) { //should be the last one so don't care if this one overwrites the result cache
-              if (readSingleReg(SOFAR_SLAVE_ID, SOFAR2_WORKING_MODE, &rs) == 0) {
+            if (mqtt_status_reads[l].regnum == SOFAR_WORKING_MODE) { //should be the last one so don't care if this one overwrites the result cache
+              if (readSingleReg(SOFAR_SLAVE_ID, SOFAR_WORKING_MODE, &rs) == 0) {
                 addStateInfo(state, l, 0, &rs);
               }
             } else {
