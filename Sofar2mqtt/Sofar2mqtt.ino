@@ -316,7 +316,7 @@ static struct mqtt_status_register  mqtt_status_reads[] =
   { ME3000, SOFAR_REG_BATTA, "battery_current", S16, DIV100 },
   { ME3000, SOFAR_REG_SYSIOW, "inverter_power", S16, MUL10 },
   { ME3000, SOFAR_REG_BATTSOC, "batterySOC", U16, NOCALC },
-  { ME3000, SOFAR_REG_BATTSOC, "batterySOH", U16, NOCALC },
+  { ME3000, SOFAR_REG_BATTSOH, "batterySOH", U16, NOCALC },
   { ME3000, SOFAR_REG_BATTTEMP, "battery_temp", S16, NOCALC },
   { ME3000, SOFAR_REG_BATTCYC, "battery_cycles", U16, NOCALC },
   { ME3000, SOFAR_REG_LOADW, "consumption", S16, MUL10},
@@ -347,6 +347,7 @@ static struct mqtt_status_register  mqtt_status_reads[] =
   { HYBRID, SOFAR_REG_BATTA, "battery_current", S16, DIV100 },
   { HYBRID, SOFAR_REG_SYSIOW, "inverter_power", S16, MUL10 },
   { HYBRID, SOFAR_REG_BATTSOC, "batterySOC", U16, NOCALC },
+  { HYBRID, SOFAR_REG_BATTSOH, "batterySOH", U16, NOCALC },
   { HYBRID, SOFAR_REG_BATTTEMP, "battery_temp", S16, NOCALC },
   { HYBRID, SOFAR_REG_BATTCYC, "battery_cycles", U16, NOCALC },
   { HYBRID, SOFAR_REG_LOADW, "consumption", S16, MUL10 },
@@ -962,12 +963,15 @@ void retrieveData()
       if ((!modbusError) && ( readBulkReg(SOFAR_SLAVE_ID, ME3000_START, (ME3000_END - ME3000_START + 1), &rs) == 0)) {
         for (unsigned int l = 0; l < sizeof(mqtt_status_reads) / sizeof(struct mqtt_status_register); l++) {
           if (mqtt_status_reads[l].inverter == inverterModel) {
-            if (mqtt_status_reads[l].regnum == SOFAR_WORKING_MODE) { //should be the last one so don't care if this one overwrites the result cache
-              if (readSingleReg(SOFAR_SLAVE_ID, SOFAR_WORKING_MODE, &rs) == 0) {
-                addStateInfo(state, l, 0, &rs);
-              }
-            } else {
+            if ((mqtt_status_reads[l].regnum >= ME3000_START) && (mqtt_status_reads[l].regnum <= ME3000_END)) {
+              //within bulk request
               addStateInfo(state, l, (mqtt_status_reads[l].regnum - ME3000_START) * 2, &rs);
+            } else {
+              //not in bulk request, generate single request
+              modbusResponse singleRs;
+              if (readSingleReg(SOFAR_SLAVE_ID, mqtt_status_reads[l].regnum, &singleRs) == 0) {
+                addStateInfo(state, l, 0, &singleRs);
+              }
             }
             loopRuns(); //handle some other requests while building the state info
           }
@@ -978,12 +982,15 @@ void retrieveData()
       if ((!modbusError) && ( readBulkReg(SOFAR_SLAVE_ID, HYBRID_START, (HYBRID_END - HYBRID_START + 1), &rs) == 0)) {
         for (unsigned int l = 0; l < sizeof(mqtt_status_reads) / sizeof(struct mqtt_status_register); l++) {
           if (mqtt_status_reads[l].inverter == inverterModel) {
-            if (mqtt_status_reads[l].regnum == SOFAR_WORKING_MODE) { //should be the last one so don't care if this one overwrites the result cache
-              if (readSingleReg(SOFAR_SLAVE_ID, SOFAR_WORKING_MODE, &rs) == 0) {
-                addStateInfo(state, l, 0, &rs);
-              }
-            } else {
+            if ((mqtt_status_reads[l].regnum >= HYBRID_START) && (mqtt_status_reads[l].regnum <= HYBRID_END)) {
+              //within bulk request
               addStateInfo(state, l, (mqtt_status_reads[l].regnum - HYBRID_START) * 2, &rs);
+            } else {
+              //not in bulk request, generate single request
+              modbusResponse singleRs;
+              if (readSingleReg(SOFAR_SLAVE_ID, SOFAR_WORKING_MODE, &singleRs) == 0) {
+                addStateInfo(state, l, 0, &singleRs);
+              }
             }
             loopRuns(); //handle some other requests while building the state info
           }
@@ -1701,11 +1708,11 @@ void runStateHYBRID() { //same for v2
 
 void drawCentreString(const String &buf, int x, int y)
 {
-    int16_t x1, y1;
-    uint16_t w, h;
-    tft.getTextBounds(buf, x, y, &x1, &y1, &w, &h); //calc width of new string
-    tft.setCursor(x - w / 2, y);
-    tft.print(buf);
+  int16_t x1, y1;
+  uint16_t w, h;
+  tft.getTextBounds(buf, x, y, &x1, &y1, &w, &h); //calc width of new string
+  tft.setCursor(x - w / 2, y);
+  tft.print(buf);
 }
 
 void updateRunstate()
