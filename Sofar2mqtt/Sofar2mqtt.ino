@@ -215,11 +215,12 @@ bool modbusError = true;
 #define SOFAR_REG_DISCHTOTAL  0x0228
 #define SOFAR_REG_BATTCYC	0x022c
 #define SOFAR_REG_PVA		0x0236
+#define SOFAR_REG_BATTSOH 0x0237
 #define SOFAR_REG_INTTEMP	0x0238
 #define SOFAR_REG_HSTEMP	0x0239
 #define SOFAR_REG_PV1		0x0252
 #define SOFAR_REG_PV2		0x0255
-
+#define SOFAR_WORKING_MODE 0x1200
 #define SOFAR_ANTIREFLUX_CONTROL 0x1242
 #define SOFAR_ANTIREFLUX_POWER 0x1243
 
@@ -262,6 +263,7 @@ bool modbusError = true;
 #define SOFAR2_REG_BATTW   0x0606
 #define SOFAR2_REG_BATTTEMP  0x0607
 #define SOFAR2_REG_BATTSOC 0x0608
+#define SOFAR2_REG_BATTSOH 0x0609
 #define SOFAR2_REG_BATTCYC 0x060A
 //Electric  Power (0x0680-0x06BF)
 #define SOFAR2_POW_BEGIN 0x0684
@@ -279,11 +281,10 @@ bool modbusError = true;
 #define SOFAR2_REG_DISCHDAY  0x0698
 #define SOFAR2_REG_DISCHTOTAL  0x069A
 //end
-
+#define SOFAR2_WORKING_MODE 0x1110
 #define SOFAR2_ANTIREFLUX_CONTROL 0x1023
 #define SOFAR2_ANTIREFLUX_POWER 0x1024
 
-#define SOFAR2_REG_STORAGEMODE  0x4368
 #define SOFAR2_REG_PASSIVECONTROL 0x1187 //in decimal 4487-4492, write 3x 32BIT values with first 32BIT = 0x0000 and next two are same (actually low=high limit) for the value of passive control
 
 enum calculatorT {NOCALC, DIV10, DIV100, MUL10, MUL100, COMBINE};
@@ -314,6 +315,7 @@ static struct mqtt_status_register  mqtt_status_reads[] =
   { ME3000, SOFAR_REG_BATTA, "battery_current", S16, DIV100 },
   { ME3000, SOFAR_REG_SYSIOW, "inverter_power", S16, MUL10 },
   { ME3000, SOFAR_REG_BATTSOC, "batterySOC", U16, NOCALC },
+  { ME3000, SOFAR_REG_BATTSOC, "batterySOH", U16, NOCALC },
   { ME3000, SOFAR_REG_BATTTEMP, "battery_temp", S16, NOCALC },
   { ME3000, SOFAR_REG_BATTCYC, "battery_cycles", U16, NOCALC },
   { ME3000, SOFAR_REG_LOADW, "consumption", S16, MUL10},
@@ -333,6 +335,7 @@ static struct mqtt_status_register  mqtt_status_reads[] =
   { ME3000, SOFAR_REG_DISCHTOTAL, "total_discharged", U32, COMBINE },
   { ME3000, SOFAR_REG_INTTEMP, "inverter_temp", S16, NOCALC },
   { ME3000, SOFAR_REG_HSTEMP, "inverter_HStemp", S16, NOCALC },
+  { ME3000, SOFAR_WORKING_MODE, "working_mode", U16, NOCALC},
   { HYBRID, SOFAR_REG_RUNSTATE, "running_state", U16, NOCALC },
   { HYBRID, SOFAR_REG_GRIDV, "grid_voltage", U16, DIV10 },
   { HYBRID, SOFAR_REG_GRIDA, "grid_current", S16, DIV100 },
@@ -364,6 +367,7 @@ static struct mqtt_status_register  mqtt_status_reads[] =
   { HYBRID, SOFAR_REG_DISCHTOTAL, "total_discharged", U32, COMBINE },
   { HYBRID, SOFAR_REG_INTTEMP, "inverter_temp", S16, NOCALC },
   { HYBRID, SOFAR_REG_HSTEMP, "inverter_HStemp", S16, NOCALC },
+  { HYBRID, SOFAR_WORKING_MODE, "working_mode", U16, NOCALC},
   { HYDV2, SOFAR2_REG_RUNSTATE, "running_state", U16, NOCALC },
   { HYDV2, SOFAR2_REG_INTTEMP, "inverter_temp", S16, NOCALC },
   { HYDV2, SOFAR2_REG_HSTEMP, "inverter_HStemp", S16, NOCALC},
@@ -384,6 +388,7 @@ static struct mqtt_status_register  mqtt_status_reads[] =
   { HYDV2, SOFAR2_REG_BATTW, "battery_power", S16, MUL10 },
   { HYDV2, SOFAR2_REG_BATTTEMP, "battery_temp", S16, NOCALC },
   { HYDV2, SOFAR2_REG_BATTSOC, "batterySOC", U16, NOCALC },
+  { HYDV2, SOFAR2_REG_BATTSOH, "batterySOH", U16, NOCALC },
   { HYDV2, SOFAR2_REG_BATTCYC, "battery_cycles", U16, NOCALC },
   { HYDV2, SOFAR2_REG_PVDAY, "today_generation", U32, DIV100 },
   { HYDV2, SOFAR2_REG_PVTOTAL, "total_generation", U32, DIV10 },
@@ -396,7 +401,8 @@ static struct mqtt_status_register  mqtt_status_reads[] =
   { HYDV2, SOFAR2_REG_CHARGDAY, "today_charged", U32, DIV100 },
   { HYDV2, SOFAR2_REG_CHARGTOTAL, "total_charged", U32, DIV10 },
   { HYDV2, SOFAR2_REG_DISCHDAY, "today_discharged", U32, DIV100 },
-  { HYDV2, SOFAR2_REG_DISCHTOTAL, "total_discharged", U32, DIV10 }
+  { HYDV2, SOFAR2_REG_DISCHTOTAL, "total_discharged", U32, DIV10 },
+  { HYDV2, SOFAR2_WORKING_MODE, "working_mode", U16, NOCALC},
 };
 
 
@@ -744,7 +750,7 @@ void setup_wifi()
   wifiManager.setAPCallback(configModeCallback);
   wifiManager.setConfigPortalTimeout(PORTAL_TIMEOUT);
   wifiManager.setSaveConfigCallback(save_wifi_config_callback);
-#if defined(ESP8266)  
+#if defined(ESP8266)
   wifiManager.addParameter(&custom_hidden_lcd);
 #endif
   wifiManager.addParameter(&custom_hidden_inverter);
@@ -953,20 +959,34 @@ void retrieveData()
     if (inverterModel == ME3000) {
       modbusResponse  rs;
       if ((!modbusError) && ( readBulkReg(SOFAR_SLAVE_ID, ME3000_START, (ME3000_END - ME3000_START + 1), &rs) == 0)) {
-        for (unsigned int l = 0; l < sizeof(mqtt_status_reads) / sizeof(struct mqtt_status_register); l++)
+        for (unsigned int l = 0; l < sizeof(mqtt_status_reads) / sizeof(struct mqtt_status_register); l++) {
           if (mqtt_status_reads[l].inverter == inverterModel) {
-            addStateInfo(state, l, (mqtt_status_reads[l].regnum - ME3000_START) * 2, &rs);
+            if (mqtt_status_reads[l].regnum == SOFAR2_WORKING_MODE) { //should be the last one so don't care if this one overwrites the result cache
+              if (readSingleReg(SOFAR_SLAVE_ID, SOFAR2_WORKING_MODE, &rs) == 0) {
+                addStateInfo(state, l, 0, &rs);
+              }
+            } else {
+              addStateInfo(state, l, (mqtt_status_reads[l].regnum - ME3000_START) * 2, &rs);
+            }
             loopRuns(); //handle some other requests while building the state info
           }
+        }
       }
     } else if (inverterModel == HYBRID) {
       modbusResponse  rs;
       if ((!modbusError) && ( readBulkReg(SOFAR_SLAVE_ID, HYBRID_START, (HYBRID_END - HYBRID_START + 1), &rs) == 0)) {
-        for (unsigned int l = 0; l < sizeof(mqtt_status_reads) / sizeof(struct mqtt_status_register); l++)
+        for (unsigned int l = 0; l < sizeof(mqtt_status_reads) / sizeof(struct mqtt_status_register); l++) {
           if (mqtt_status_reads[l].inverter == inverterModel) {
-            addStateInfo(state, l, (mqtt_status_reads[l].regnum - HYBRID_START) * 2, &rs);
+            if (mqtt_status_reads[l].regnum == SOFAR2_WORKING_MODE) { //should be the last one so don't care if this one overwrites the result cache
+              if (readSingleReg(SOFAR_SLAVE_ID, SOFAR2_WORKING_MODE, &rs) == 0) {
+                addStateInfo(state, l, 0, &rs);
+              }
+            } else {
+              addStateInfo(state, l, (mqtt_status_reads[l].regnum - HYBRID_START) * 2, &rs);
+            }
             loopRuns(); //handle some other requests while building the state info
           }
+        }
       }
     } else if (inverterModel == HYDV2) {
       if (!modbusError) {
@@ -1018,6 +1038,12 @@ void retrieveData()
             if (mqtt_status_reads[l].regnum == SOFAR2_REG_PVW) {
               cached == 0;
               if (readSingleReg(SOFAR_SLAVE_ID, SOFAR2_REG_PVW, &rs) == 0) {
+                addStateInfo(state, l, 0, &rs);
+              }
+            }
+            if (mqtt_status_reads[l].regnum == SOFAR2_WORKING_MODE) {
+              cached == 0;
+              if (readSingleReg(SOFAR_SLAVE_ID, SOFAR2_WORKING_MODE, &rs) == 0) {
                 addStateInfo(state, l, 0, &rs);
               }
             }
@@ -1672,6 +1698,14 @@ void runStateHYBRID() { //same for v2
 
 }
 
+void drawCentreString(const String &buf, int x, int y)
+{
+    int16_t x1, y1;
+    uint16_t w, h;
+    tft.getTextBounds(buf, x, y, &x1, &y1, &w, &h); //calc width of new string
+    tft.setCursor(x - w / 2, y);
+    tft.print(buf);
+}
 
 void updateRunstate()
 {
@@ -1707,6 +1741,11 @@ void updateRunstate()
         printScreen("RS485 fault");
       }
     }
+    //test display
+    tft.setTextSize(2);
+    tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
+    drawCentreString("SOC: 75%", 120, 70);
+    drawCentreString("PV: 3100W", 120, 230);
   }
 }
 
