@@ -1534,6 +1534,16 @@ int sendPassiveCmdV2(uint8_t id, uint16_t cmd, int32_t param, String pubTopic) {
   return err;
 }
 
+void sendMqtt(char* topic, String msg_str)
+{
+  char  msg[2000];
+
+  mqtt.setBufferSize(2048);
+  msg_str.toCharArray(msg, msg_str.length() + 1); //packaging up the data to publish to mqtt
+  if (!(mqtt.publish(topic, msg)))
+    printScreen("MQTT publish failed");
+}
+
 int sendPassiveCmd(uint8_t id, uint16_t cmd, uint16_t param, String pubTopic)
 {
   if (inverterModel == HYDV2) return 0; //no commands yet
@@ -1556,16 +1566,6 @@ int sendPassiveCmd(uint8_t id, uint16_t cmd, uint16_t param, String pubTopic)
   topic += "/response/" + pubTopic;
   sendMqtt(const_cast<char*>(topic.c_str()), retMsg);
   return err;
-}
-
-void sendMqtt(char* topic, String msg_str)
-{
-  char	msg[2000];
-
-  mqtt.setBufferSize(2048);
-  msg_str.toCharArray(msg, msg_str.length() + 1); //packaging up the data to publish to mqtt
-  if (!(mqtt.publish(topic, msg)))
-    printScreen("MQTT publish failed");
 }
 
 
