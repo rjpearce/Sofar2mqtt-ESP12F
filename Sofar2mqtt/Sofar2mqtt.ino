@@ -942,12 +942,15 @@ void addStateInfo(String &state, unsigned int index, unsigned int dataindex, mod
   }
 
   if ((mqtt_status_reads[index].mqtt_name == "batterySOC") && (tftModel)) {
-    tft.setCursor(105, 70);
     tft.setTextSize(2);
     tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
-    tft.println(stringVal + "%  ");
+    drawCentreString("SOC: "+stringVal+"%", 120, 70);
   }
-
+  if ((mqtt_status_reads[index].mqtt_name == "solarPV") && (tftModel)) {
+    tft.setTextSize(2);
+    tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
+    drawCentreString("PV: "+stringVal+"W", 120, 230);
+  }
 }
 
 void retrieveData()
@@ -1749,11 +1752,6 @@ void updateRunstate()
         printScreen("RS485 fault");
       }
     }
-    //test display
-    tft.setTextSize(2);
-    tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
-    drawCentreString("SOC: 75%", 120, 70);
-    drawCentreString("PV: 3100W", 120, 230);
   }
 }
 
@@ -2009,9 +2007,14 @@ void resetConfig() {
   //initiate debug led indication for factory reset
 #if defined(ESP8266)
   pinMode(2, FUNCTION_0); //set it as gpio
-#endif
   pinMode(2, OUTPUT);
   digitalWrite(2, LOW); //blue led on
+#else if defined(ESP32)
+  pinMode(20, OUTPUT);
+  digitalWrite(20, LOW); //tx led on
+  pinMode(21, OUTPUT);
+  digitalWrite(21, LOW); //rx led on
+#endif
   if (tftModel) {
     analogWrite(TFT_LED, 32); //PWM on led pin to dim screen
     tft.fillScreen(ILI9341_RED);
@@ -2034,10 +2037,19 @@ void resetConfig() {
   }
 
   while (true) {
+#if defined(ESP8266)
     digitalWrite(2, HIGH);
     delay(100);
     digitalWrite(2, LOW);
     delay(100);
+#else if defined(ESP32)
+  digitalWrite(20, HIGH);
+  digitalWrite(21, LOW);
+  delay(100);  
+  digitalWrite(21, HIGH);
+  digitalWrite(20, LOW);
+  delay(100);  
+#endif
   }
 }
 
