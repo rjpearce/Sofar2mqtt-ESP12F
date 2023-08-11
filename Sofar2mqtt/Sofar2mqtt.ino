@@ -946,7 +946,7 @@ void addStateInfo(String &state, unsigned int index, unsigned int dataindex, mod
     tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
     drawCentreString("SOC: "+stringVal+"%", 120, 70);
   }
-  if ((mqtt_status_reads[index].mqtt_name == "solarPV") && (tftModel)) {
+  if ((mqtt_status_reads[index].mqtt_name == "solarPV") && (tftModel) && (inverterModel != ME3000) ) {
     tft.setTextSize(2);
     tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
     drawCentreString("PV: "+stringVal+"W", 120, 230);
@@ -1714,6 +1714,8 @@ void drawCentreString(const String &buf, int x, int y)
   int16_t x1, y1;
   uint16_t w, h;
   tft.getTextBounds(buf, x, y, &x1, &y1, &w, &h); //calc width of new string
+  tft.setCursor(0, y);
+  tft.print("                           ");
   tft.setCursor(x - w / 2, y);
   tft.print(buf);
 }
