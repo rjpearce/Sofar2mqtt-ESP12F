@@ -56,82 +56,11 @@ char MQTT_PASS[32] = "";
 #define MQTTRECONNECTTIMER 30000 //it takes 30 secs for each mqtt server reconnect attempt
 unsigned long lastMqttReconnectAttempt = 0;
 
-
-
-/*****
-  Sofar2mqtt is a remote control interface for Sofar solar and battery inverters.
-  It allows remote control of the inverter and reports the invertor status, power usage, battery state etc for integration with smart home systems such as Home Assistant and Node-Red vi MQTT.
-  For read only mode, it will send status messages without the inverter needing to be in passive mode.
-  It's designed to run on an ESP8266 and ESP32-c3 microcontroller with a TTL to RS485 module such as MAX485 or MAX3485.
-  Designed to work with TTL modules with or without the DR and RE flow control pins. If your TTL module does not have these pins then just ignore the wire from D5.
-
-  Subscribe your MQTT client to:
-
-  Sofar2mqtt/state
-
-  Which provides:
-
-  running_state
-  grid_voltage
-  grid_current
-  grid_freq
-  systemIO_power (AC side of inverter)
-  battery_power  (DC side of inverter)
-  battery_voltage
-  battery_current
-  batterySOC
-  battery_temp
-  battery_cycles
-  grid_power
-  consumption
-  solarPV
-  today_generation
-  today_exported
-  today_purchase
-  today_consumption
-  inverter_temp
-  inverterHS_temp
-  solarPVAmps
-
-  With the inverter in Passive Mode, send MQTT messages to:
-
-  Sofar2mqtt/set/standby   - send value "true"
-  Sofar2mqtt/set/auto   - send value "true" or "battery_save"
-  Sofar2mqtt/set/charge   - send values in the range 0-3000 (watts)
-  Sofar2mqtt/set/discharge   - send values in the range 0-3000 (watts)
-
-  Each of the above will return a response on:
-  Sofar2mqtt/response/<function>, the message containing the response from
-  the inverter, which has a result code in the lower byte and status in the upper byte.
-
-  The result code will be 0 for success, 1 means "Invalid Work Mode" ( which possibly means
-  the inverter isn't in passive mode, ) and 3 means "Inverter busy." 2 and 4 are data errors
-  which shouldn't happen unless there's a cable issue or some such.
-
-  The status bits in the upper byte indicate the following:
-  Bit 0 - Charge enabled
-  Bit 1 - Discharge enabled
-  Bit 2 - Battery full, charge prohibited
-  Bit 3 - Battery flat, discharge prohibited
-
-  For example, a publish to Sofar2mqtt/set/charge will result in one on Sofar2mqtt/response/charge.
-  AND the message with 0xff to get the result code, which should be 0.
-
-  battery_save is a hybrid auto mode that will charge from excess solar but not discharge.
-
-  There will also be messages published to Sofar2mqtt/response/<type> when things happen
-  in the background, such as setting auto mode on startup and switching modes in battery_save mode.
-
-  (c)Colin McGerty 2021 colin@mcgerty.co.uk
-  Major version 2.0 rewrite by Adam Hill sidepipeukatgmaildotcom
-  Thanks to Rich Platts for hybrid model code and testing.
-  calcCRC by angelo.compagnucci@gmail.com and jpmzometa@gmail.com
-*****/
 #include <Arduino.h>
 
 #define SOFAR_SLAVE_ID          0x01
 
-#define MAX_POWER		3000 //maybe change in further models
+#define MAX_POWER		3000 //only used in peakshaving now
 
 #define RS485_TRIES 8       // x 50mS to wait for RS485 input chars.
 
