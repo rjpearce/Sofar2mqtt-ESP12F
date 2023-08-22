@@ -1,5 +1,5 @@
 // The device name is used as the MQTT base topic. If you need more than one Sofar2mqtt on your network, give them unique names.
-const char* version = "v3.3-alpha12";
+const char* version = "v3.5";
 
 bool tftModel = true; //true means 2.8" color tft, false for oled version. This is always true for ESP32 devices as we don't use oled device for esp32.
 
@@ -873,12 +873,27 @@ void addStateInfo(String &state, unsigned int index, unsigned int dataindex, mod
   if ((mqtt_status_reads[index].mqtt_name == "batterySOC") && (tftModel)) {
     tft.setTextSize(2);
     tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
-    drawCentreString("SOC: "+stringVal+"%", 120, 70);
+    drawCentreString("SOC: " + stringVal + "%", 120, 70);
   }
   if ((mqtt_status_reads[index].mqtt_name == "solarPV") && (tftModel) && (inverterModel != ME3000) ) {
     tft.setTextSize(2);
     tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
-    drawCentreString("PV: "+stringVal+"W", 120, 230);
+    if (!calculated) { //for the screen print we still need to calculate the correct value
+      switch (mqtt_status_reads[index].calculator) {
+        case MUL10: {
+            stringVal = String(stringVal.toInt() * 10);
+            break;
+          }
+        case MUL100: {
+            stringVal = String(stringVal.toInt() * 100);
+            break;
+          }
+        default: {
+            break;
+          }
+      }
+    }
+    drawCentreString("PV: " + stringVal + "W", 120, 230);
   }
 }
 
@@ -1974,12 +1989,12 @@ void resetConfig() {
     digitalWrite(2, LOW);
     delay(100);
 #else if defined(ESP32)
-  digitalWrite(20, HIGH);
-  digitalWrite(21, LOW);
-  delay(100);  
-  digitalWrite(21, HIGH);
-  digitalWrite(20, LOW);
-  delay(100);  
+    digitalWrite(20, HIGH);
+    digitalWrite(21, LOW);
+    delay(100);
+    digitalWrite(21, HIGH);
+    digitalWrite(20, LOW);
+    delay(100);
 #endif
   }
 }
