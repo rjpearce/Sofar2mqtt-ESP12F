@@ -2122,7 +2122,7 @@ void loopRuns() {
 #if defined(ESP8266)
   MDNS.update();
 #endif
-  tsLoop();
+  if (tftModel) tsLoop();
 }
 
 void loop()
