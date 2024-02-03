@@ -1,0 +1,1 @@
+Make sure you load the correct type firmware on your module! The ESP8266 firmware is for the older module which has the ESP-12F chip. Visualy the newer board is different as the antenna trace line on the chip is black where on the older model the trace line is copper colored.
