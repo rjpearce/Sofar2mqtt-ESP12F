@@ -1,5 +1,5 @@
 // The device name is used as the MQTT base topic. If you need more than one Sofar2mqtt on your network, give them unique names.
-const char* version = "v3.6";
+const char* version = "v3.7b";
 
 bool tftModel = true; //true means 2.8" color tft, false for oled version. This is always true for ESP32 devices as we don't use oled device for esp32.
 
@@ -210,6 +210,9 @@ bool modbusError = true;
 #define SOFAR2_REG_BATT2SOC 0x060F
 #define SOFAR2_REG_BATT2SOH 0x0610
 #define SOFAR2_REG_BATT2CYC 0x0611
+#define SOFAR2_REG_BATTTOTALW 0x0667
+#define SOFAR2_REG_BATTAVGSOC 0x0668
+#define SOFAR2_REG_BATTAVGSOH 0x0669
 //Electric  Power (0x0680-0x06BF)
 #define SOFAR2_POW_BEGIN 0x0684
 #define SOFAR2_POW_END 0x069B //one more because of 32bit value stored
@@ -343,6 +346,9 @@ static struct mqtt_status_register  mqtt_status_reads[] =
   { HYDV2, SOFAR2_REG_BATT2SOC, "battery2SOC", U16, NOCALC },
   { HYDV2, SOFAR2_REG_BATT2SOH, "battery2SOH", U16, NOCALC },
   { HYDV2, SOFAR2_REG_BATT2CYC, "battery2_cycles", U16, NOCALC },
+  { HYDV2, SOFAR2_REG_BATTTOTALW, "battery_total_power", S16, MUL10 },  
+  { HYDV2, SOFAR2_REG_BATTAVGSOC, "battery_avg_SOC", U16, NOCALC }, 
+  { HYDV2, SOFAR2_REG_BATTAVGSOH, "battery_avg_SOH", U16, NOCALC }, 
   { HYDV2, SOFAR2_REG_PVDAY, "today_generation", U32, DIV100 },
   { HYDV2, SOFAR2_REG_PVTOTAL, "total_generation", U32, DIV10 },
   { HYDV2, SOFAR2_REG_LOADDAY, "today_consumption", U32, DIV100 },
@@ -953,7 +959,12 @@ void addStateInfo(String &state, unsigned int index, unsigned int dataindex, mod
     sendMqtt(const_cast<char*>(topic.c_str()), stringVal);
   }
 
-  if ((mqtt_status_reads[index].mqtt_name == "batterySOC") && (tftModel)) {
+  if ((mqtt_status_reads[index].mqtt_name == "batterySOC") && (tftModel) && (invertermodel != HYDV2)) {
+    tft.setTextSize(2);
+    tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
+    drawCentreString("SOC: " + stringVal + "%", 120, 70);
+  }
+  if ((mqtt_status_reads[index].mqtt_name == "battery_avg_SOC") && (tftModel) && (invertermodel == HYDV2)) {
     tft.setTextSize(2);
     tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
     drawCentreString("SOC: " + stringVal + "%", 120, 70);
@@ -1829,16 +1840,11 @@ void updateRunstate()
 
 int16_t batteryWatts()
 {
-  uint16_t reg = inverterModel == HYDV2 ? SOFAR2_REG_BATTW : SOFAR_REG_BATTW;
+  uint16_t reg = inverterModel == HYDV2 ? SOFAR2_REG_BATTTOTALW : SOFAR_REG_BATTW;
   modbusResponse  response;
   if (!readSingleReg(SOFAR_SLAVE_ID, reg, &response))
   {
     int16_t  w = (int16_t)((response.data[0] << 8) | response.data[1]) * 10;
-    if (HYDV2) {
-      if (!readSingleReg((SOFAR_SLAVE_ID + 7), reg, &response)) { // for 2nd BAT
-        w += (int16_t)((response.data[0] << 8) | response.data[1]) * 10;
-      }
-    }
     return w;
   }
   return 0;
