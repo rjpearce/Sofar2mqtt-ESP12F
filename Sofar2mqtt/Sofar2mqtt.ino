@@ -346,7 +346,7 @@ static struct mqtt_status_register  mqtt_status_reads[] =
   { HYDV2, SOFAR2_REG_BATT2SOC, "battery2SOC", U16, NOCALC },
   { HYDV2, SOFAR2_REG_BATT2SOH, "battery2SOH", U16, NOCALC },
   { HYDV2, SOFAR2_REG_BATT2CYC, "battery2_cycles", U16, NOCALC },
-  { HYDV2, SOFAR2_REG_BATTTOTALW, "battery_total_power", S16, MUL10 },  
+  { HYDV2, SOFAR2_REG_BATTTOTALW, "battery_total_power", S16, MUL100 },  
   { HYDV2, SOFAR2_REG_BATTAVGSOC, "battery_avg_SOC", U16, NOCALC }, 
   { HYDV2, SOFAR2_REG_BATTAVGSOH, "battery_avg_SOH", U16, NOCALC }, 
   { HYDV2, SOFAR2_REG_PVDAY, "today_generation", U32, DIV100 },
@@ -959,12 +959,12 @@ void addStateInfo(String &state, unsigned int index, unsigned int dataindex, mod
     sendMqtt(const_cast<char*>(topic.c_str()), stringVal);
   }
 
-  if ((mqtt_status_reads[index].mqtt_name == "batterySOC") && (tftModel) && (invertermodel != HYDV2)) {
+  if ((mqtt_status_reads[index].mqtt_name == "batterySOC") && (tftModel) && (!battery2Installed)) {
     tft.setTextSize(2);
     tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
     drawCentreString("SOC: " + stringVal + "%", 120, 70);
   }
-  if ((mqtt_status_reads[index].mqtt_name == "battery_avg_SOC") && (tftModel) && (invertermodel == HYDV2)) {
+  if ((mqtt_status_reads[index].mqtt_name == "battery_avg_SOC") && (tftModel) && (battery2Installed)) {
     tft.setTextSize(2);
     tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
     drawCentreString("SOC: " + stringVal + "%", 120, 70);
@@ -1845,6 +1845,7 @@ int16_t batteryWatts()
   if (!readSingleReg(SOFAR_SLAVE_ID, reg, &response))
   {
     int16_t  w = (int16_t)((response.data[0] << 8) | response.data[1]) * 10;
+    if (inverterModel == HYDV2) w = w * 10;
     return w;
   }
   return 0;
@@ -2183,7 +2184,36 @@ void setup()
   }
 
   if (tftModel) {
-    Serial.begin(9600);
+/*
+    if (HYDV2) {
+      //these models work better on higher baud because of the amount of data that is received
+      //this routine checks if the inverter is already on the higher and if not tries to switch it to that speed
+      tft.println("Start checking modbus baudrate");
+      Serial.begin(57600);
+      modbusResponse rs;
+      if (readBulkReg(SOFAR_SLAVE_ID, 0x100b, 5, &rs) != 0) {
+        tft.println("Not responding on high baudrate");
+        //inverter not responding, try to check if inverter is responding on 9600 baud
+        Serial.begin(9600);
+        if (readBulkReg(SOFAR_SLAVE_ID, 0x100b, 5, &rs) == 0) {
+          tft.println("Switching to higher baudrate");
+          //it responded, so try to switch to 57600 baud now
+          uint8_t frame[] = { SOFAR_SLAVE_ID, MODBUS_FN_WRITEMULREG, 0x10, 0x0b, 0, 5, 10, 0, SOFAR_SLAVE_ID, 0, 4, 0, 0, 0, 0, 0, 1, 0, 0};
+          sendModbus(frame, sizeof(frame), &rs);
+          delay(1000);
+          Serial.begin(57600);
+          if (readBulkReg(SOFAR_SLAVE_ID, 0x100b, 5, &rs) != 0) {
+            tft.println("Switching failed, keep lower baudrate");
+            //it didn't respond so head back to 9600 baud
+            Serial.begin(9600);
+          }
+        }
+      }
+      delay(1000);
+    } else {
+*/      
+      Serial.begin(9600);
+    //}
   } else {
     pinMode(SERIAL_COMMUNICATION_CONTROL_PIN, OUTPUT);
     digitalWrite(SERIAL_COMMUNICATION_CONTROL_PIN, RS485_RX);
@@ -2319,5 +2349,5 @@ bool checkCRC(uint8_t frame[], byte frameSize)
   received_crc = ((frame[frameSize - 2] << 8) | frame[frameSize - 1]);
   calcCRC(frame, frameSize);
   calculated_crc = ((frame[frameSize - 2] << 8) | frame[frameSize - 1]);
-  return (received_crc = calculated_crc);
+  return (received_crc == calculated_crc);
 }
