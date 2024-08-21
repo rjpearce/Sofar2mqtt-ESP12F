@@ -1,5 +1,5 @@
 // The device name is used as the MQTT base topic. If you need more than one Sofar2mqtt on your network, give them unique names.
-const char* version = "v3.7b";
+const char* version = "v3.7";
 
 bool tftModel = true; //true means 2.8" color tft, false for oled version. This is always true for ESP32 devices as we don't use oled device for esp32.
 
@@ -784,6 +784,7 @@ void setup_wifi()
   wifiManager.addParameter(&custom_html_inputs);
 
   wifiManager.setConnectTimeout(WIFI_TIMEOUT);
+  wifiManager.setDebugOutput(false);
   //android fix, disable for now
   //wifiManager.setAPStaticIPConfig(IPAddress(8,8,8,8), IPAddress(8,8,8,8), IPAddress(255,255,255,0));
   if (!wifiManager.autoConnect("Sofar2Mqtt"))
@@ -1609,9 +1610,9 @@ int sendPassiveCmdV2(uint8_t id, uint16_t cmd, int32_t param, String pubTopic) {
     err = 0;
   }
 
-  String topic(deviceName);
-  topic += "/response/" + pubTopic;
-  sendMqtt(const_cast<char*>(topic.c_str()), retMsg);
+  char mqtt_topic[256];
+  sprintf_P(mqtt_topic, PSTR("%s/response/%s"), deviceName, pubTopic);
+  sendMqtt(mqtt_topic, retMsg);
   return err;
 }
 
@@ -1643,9 +1644,9 @@ int sendPassiveCmd(uint8_t id, uint16_t cmd, uint16_t param, String pubTopic)
     err = 0;
   }
 
-  String topic(deviceName);
-  topic += "/response/" + pubTopic;
-  sendMqtt(const_cast<char*>(topic.c_str()), retMsg);
+  char mqtt_topic[256];
+  sprintf_P(mqtt_topic, PSTR("%s/response/%s"), deviceName, pubTopic);
+  sendMqtt(mqtt_topic, retMsg);
   return err;
 }
 
