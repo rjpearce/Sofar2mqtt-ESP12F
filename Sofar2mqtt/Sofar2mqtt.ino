@@ -1,5 +1,5 @@
 // The device name is used as the MQTT base topic. If you need more than one Sofar2mqtt on your network, give them unique names.
-const char* version = "v3.7";
+const char* version = "v3.8";
 
 bool tftModel = true; //true means 2.8" color tft, false for oled version. This is always true for ESP32 devices as we don't use oled device for esp32.
 
@@ -1249,15 +1249,7 @@ void mqttCallback(String topic, byte *message, unsigned int length)
 
   switch (inverterModel) {
     case HYDV2: {
-        if (cmd == "standby") {
-          sendPassiveCmdV2(SOFAR_SLAVE_ID, SOFAR2_REG_PASSIVECONTROL, 0, cmd);
-        } else if (cmd == "auto") { //there is no self use in passive mode on the HYDv2
-        } else if ((cmd == "charge") || (cmd == "discharge")) {
-          if (cmd == "discharge") {
-            messageValue = messageValue * -1;
-          }
-          sendPassiveCmdV2(SOFAR_SLAVE_ID, SOFAR2_REG_PASSIVECONTROL, messageValue, cmd);
-        }
+        sendPassiveCmdV2(SOFAR_SLAVE_ID, SOFAR2_REG_PASSIVECONTROL, messageValue, cmd);
         break;
       }
     default: {
@@ -1372,6 +1364,8 @@ void selfuseMode()
     }
   }
 }
+
+
 
 void batterySave()
 {
@@ -1586,7 +1580,7 @@ int readSingleReg(uint8_t id, uint16_t reg, modbusResponse *rs)
   return sendModbus(frame, sizeof(frame), rs);
 }
 
-int sendPassiveCmdV2(uint8_t id, uint16_t cmd, int32_t param, String pubTopic) {
+int sendPassiveCmdV2(uint8_t id, uint16_t cmd, int32_t param, String requestCmd) {
   /*SOFAR2_REG_PASSIVECONTROL
     need to be finished and checked
     writes to 4487 - 4492 with 6x 32-bit integers
@@ -1595,8 +1589,26 @@ int sendPassiveCmdV2(uint8_t id, uint16_t cmd, int32_t param, String pubTopic) {
     4491 = max passive power
     but 4487 isn't for forced passive mode. Set min and max to same value for that. Negative is discharging
   */
+  int32_t minPower = 0, maxPower = 0;
+  if (requestCmd == "standby") { //keep min and max at 0
+  } else if (requestCmd == "auto") { //set "window" of discharge/charge and it will emulate auto mode
+    if (param > 0) {
+      minPower = param * -1;
+      maxPower = param;
+    } else { //set a default window of 16kW (dis)charge
+      minPower = -16384;
+      maxPower = 16383;
+    }
+  } else if ((requestCmd == "charge") || (requestCmd == "discharge")) {
+    minPower = param;
+    if (requestCmd == "discharge") {
+      minPower = minPower * -1;
+    }
+    maxPower = minPower;
+  }
+
   modbusResponse  rs;
-  uint8_t frame[] = { id, MODBUS_FN_WRITEMULREG, (cmd >> 8) & 0xff, cmd & 0xff, 0, 6, 12, 0, 0, 0, 0, (param >> 24) & 0xff, (param >> 16) & 0xff, (param >> 8) & 0xff, param & 0xff, (param >> 24) & 0xff, (param >> 16) & 0xff, (param >> 8) & 0xff, param & 0xff, 0, 0 };
+  uint8_t frame[] = { id, MODBUS_FN_WRITEMULREG, (cmd >> 8) & 0xff, cmd & 0xff, 0, 6, 12, 0, 0, 0, 0, (minPower >> 24) & 0xff, (minPower >> 16) & 0xff, (minPower >> 8) & 0xff, minPower & 0xff, (maxPower >> 24) & 0xff, (maxPower >> 16) & 0xff, (maxPower >> 8) & 0xff, maxPower & 0xff, 0, 0 };
   int   err = -1;
   String    retMsg;
 
@@ -1611,7 +1623,7 @@ int sendPassiveCmdV2(uint8_t id, uint16_t cmd, int32_t param, String pubTopic) {
   }
 
   char mqtt_topic[256];
-  sprintf_P(mqtt_topic, PSTR("%s/response/%s"), deviceName, pubTopic);
+  sprintf_P(mqtt_topic, PSTR("%s/response/%s"), deviceName, requestCmd);
   sendMqtt(mqtt_topic, retMsg);
   return err;
 }
