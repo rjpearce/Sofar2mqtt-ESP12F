@@ -109,5 +109,22 @@ In normal operation, line 2 shows "Online" which indicates that both WIFI and MQ
 In normal operation, line 3 shows the inverter run state, Standby, Charging, Discharging etc.  
 In normal operation, line 4 shows the power in Watts in or out of the batteries when charging or discharging.  
 
+# PlatformIO
 
+If you are using PlatformIO use the following in your platformio.ini
+```bash
+[env:esp12e]
+platform = espressif8266
+board = esp12e
+framework = arduino
+upload_protocol = espota
+upload_port = <LOCAL-IP-ADDRESS>
+lib_deps = 
+	jenscski/DoubleResetDetect@^1.0.0
+	tzapu/WiFiManager@^2.0.17
+	knolleary/PubSubClient@^2.8
+	adafruit/Adafruit ILI9341@^1.6.1
+	paulstoffregen/XPT2046_Touchscreen@0.0.0-alpha+sha.26b691b2c8
+	adafruit/Adafruit SSD1306@^2.5.11
+```
 
