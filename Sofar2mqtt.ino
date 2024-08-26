@@ -1,5 +1,33 @@
+/*
+  Sofar2Mqtt
+  (c)Colin McGerty 2021 colin@mcgerty.co.uk
+  Major version 2.0 rewrite by Adam Hill sidepipeukatgmaildotcom
+  Thanks to Rich Platts for hybrid model code and testing.
+  calcCRC by angelo.compagnucci@gmail.com and jpmzometa@gmail.com
+  Forked by IgorYbema to bring his genius small ESP device with a dipsplay the masses
+  Forked by Richard Pearce to enrich it to bring feature parity with Sofar2Mqtt-Python 
+*/
+#include <DoubleResetDetect.h>
+#include <WiFiManager.h>
+#include <EEPROM.h>
+#include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+#include <ESP8266HTTPUpdateServer.h>
+#include <PubSubClient.h>
+#include <SoftwareSerial.h>
+#include <SPI.h>
+#include <Wire.h>
+#include "Sofar2mqtt.h"
+#include <Adafruit_ILI9341.h>   // include Adafruit ILI9341 TFT library
+#include <XPT2046_Touchscreen.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <ArduinoOTA.h>
+
 // The device name is used as the MQTT base topic. If you need more than one Sofar2mqtt on your network, give them unique names.
-const char* version = "v3.3-alpha12";
+const char* version = "v4.0-alpha1";
 
 bool tftModel = true; //true means 2.8" color tft, false for oled version
 
@@ -8,15 +36,10 @@ bool calculated = true; //default to pre-calculated values before sending to mqt
 unsigned int screenDimTimer = 30; //dim screen after 30 secs
 unsigned long lastScreenTouch = 0;
 
-
-#include <DoubleResetDetect.h>
 #define DRD_TIMEOUT 0.1
 #define DRD_ADDRESS 0x00
 DoubleResetDetect drd(DRD_TIMEOUT, DRD_ADDRESS);
 
-
-#include <WiFiManager.h>
-#include <EEPROM.h>
 #define PORTAL_TIMEOUT 300 //reboots device if hotspot isn't configured after this time
 #define WIFI_TIMEOUT 60 //try this long to connect to existing wifi before going to hotspot portal mode
 
@@ -30,102 +53,24 @@ char MQTT_PASS[32] = "";
 unsigned long lastMqttReconnectAttempt = 0;
 
 
-
-/*****
-  Sofar2mqtt is a remote control interface for Sofar solar and battery inverters.
-  It allows remote control of the inverter and reports the invertor status, power usage, battery state etc for integration with smart home systems such as Home Assistant and Node-Red vi MQTT.
-  For read only mode, it will send status messages without the inverter needing to be in passive mode.
-  It's designed to run on an ESP8266 microcontroller with a TTL to RS485 module such as MAX485 or MAX3485.
-  Designed to work with TTL modules with or without the DR and RE flow control pins. If your TTL module does not have these pins then just ignore the wire from D5.
-
-  Subscribe your MQTT client to:
-
-  Sofar2mqtt/state
-
-  Which provides:
-
-  running_state
-  grid_voltage
-  grid_current
-  grid_freq
-  systemIO_power (AC side of inverter)
-  battery_power  (DC side of inverter)
-  battery_voltage
-  battery_current
-  batterySOC
-  battery_temp
-  battery_cycles
-  grid_power
-  consumption
-  solarPV
-  today_generation
-  today_exported
-  today_purchase
-  today_consumption
-  inverter_temp
-  inverterHS_temp
-  solarPVAmps
-
-  With the inverter in Passive Mode, send MQTT messages to:
-
-  Sofar2mqtt/set/standby   - send value "true"
-  Sofar2mqtt/set/auto   - send value "true" or "battery_save"
-  Sofar2mqtt/set/charge   - send values in the range 0-3000 (watts)
-  Sofar2mqtt/set/discharge   - send values in the range 0-3000 (watts)
-
-  Each of the above will return a response on:
-  Sofar2mqtt/response/<function>, the message containing the response from
-  the inverter, which has a result code in the lower byte and status in the upper byte.
-
-  The result code will be 0 for success, 1 means "Invalid Work Mode" ( which possibly means
-  the inverter isn't in passive mode, ) and 3 means "Inverter busy." 2 and 4 are data errors
-  which shouldn't happen unless there's a cable issue or some such.
-
-  The status bits in the upper byte indicate the following:
-  Bit 0 - Charge enabled
-  Bit 1 - Discharge enabled
-  Bit 2 - Battery full, charge prohibited
-  Bit 3 - Battery flat, discharge prohibited
-
-  For example, a publish to Sofar2mqtt/set/charge will result in one on Sofar2mqtt/response/charge.
-  AND the message with 0xff to get the result code, which should be 0.
-
-  battery_save is a hybrid auto mode that will charge from excess solar but not discharge.
-
-  There will also be messages published to Sofar2mqtt/response/<type> when things happen
-  in the background, such as setting auto mode on startup and switching modes in battery_save mode.
-
-  (c)Colin McGerty 2021 colin@mcgerty.co.uk
-  Major version 2.0 rewrite by Adam Hill sidepipeukatgmaildotcom
-  Thanks to Rich Platts for hybrid model code and testing.
-  calcCRC by angelo.compagnucci@gmail.com and jpmzometa@gmail.com
-*****/
-#include <Arduino.h>
-
 #define SOFAR_SLAVE_ID          0x01
 
 #define MAX_POWER		3000 //maybe change in further models
 
 #define RS485_TRIES 8       // x 50mS to wait for RS485 input chars.
 // Wifi parameters.
-#include <ESP8266WiFi.h>
 WiFiClient wifi;
 
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
-#include <ESP8266HTTPUpdateServer.h>
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
 char jsonstring[1000];
 
 // MQTT parameters
-#include <PubSubClient.h>
 PubSubClient mqtt(wifi);
 
 // SoftwareSerial is used to create a second serial port, which will be deidcated to RS485.
 // The built-in serial port remains available for flashing and debugging.
-#include <SoftwareSerial.h>
 //for OLED version default to original sofar2mqtt ports
 #define SERIAL_COMMUNICATION_CONTROL_PIN D5 // Transmission set pin OLED version
 #define RS485_TX HIGH
@@ -137,8 +82,6 @@ SoftwareSerial RS485Serial(OLEDRXPin, OLEDTXPin);
 //for TFT verion we use the hardware serial (pin 3 and 1)
 #define RXPin        3  // Serial Receive pin
 #define TXPin        1  // Serial Transmit pin
-
-
 
 unsigned int INVERTER_RUNNINGSTATE;
 
@@ -391,13 +334,8 @@ static struct mqtt_status_register  mqtt_status_reads[] =
 #define PEAKSHAVING_INTERVAL 3000
 
 // Wemos OLED Shield set up. 64x48, pins D1 and D2
-#include <SPI.h>
-#include <Wire.h>
-
-#include "Sofar2mqtt.h"
 
 //for the tft
-#include <Adafruit_ILI9341.h>   // include Adafruit ILI9341 TFT library
 #define TFT_CS    D1     // TFT CS  pin is connected to arduino pin 8
 #define TFT_DC    D2     // TFT DC  pin is connected to arduino pin 10
 #define TFT_LED   D8
@@ -405,19 +343,15 @@ static struct mqtt_status_register  mqtt_status_reads[] =
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 
 //for touch
-#include <XPT2046_Touchscreen.h>
 #define TCS_PIN  0
 #define TIRQ_PIN  2
 XPT2046_Touchscreen ts(TCS_PIN, TIRQ_PIN);
 
 //for the oled
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
 #define OLED_RESET 0  // GPIO0
 Adafruit_SSD1306 display(OLED_RESET);
 
 
-#include <ArduinoOTA.h>
 
 /**
    Check to see if the elapsed interval has passed since the passed in
