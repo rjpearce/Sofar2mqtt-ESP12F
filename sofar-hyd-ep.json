@@ -1,0 +1,946 @@
+{
+	"registers": [
+		{
+			"name": "serial_number",
+			"register": "0x0445",
+			"read_type": "string",
+			"registers": 7,
+			"ha": {
+				"name": "Serial Number",
+				"icon": "mdi:numeric",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.serial_number }}"
+			},
+                        "refresh": 86400
+		},
+		{
+			"name": "hw_version",
+			"register": "0x044D",
+			"read_type": "string",
+			"registers": 2,
+			"ha": {
+				"name": "HW Version",
+				"icon": "mdi:numeric",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.hw_version }}"
+			},
+                        "refresh": 86400
+		},
+		{
+			"name": "sw_version_com",
+			"register": "0x0450",
+			"read_type": "string",
+			"registers": 3,
+			"ha": {
+				"name": "Software Version",
+				"icon": "mdi:numeric",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.sw_version_com }}"
+			},
+                        "refresh": 86400
+		},
+		{
+			"name": "sw_version_master",
+			"register": "0x0454",
+			"read_type": "string",
+			"registers": 3,
+			"ha": {
+				"name": "DSP1 Software Version",
+				"icon": "mdi:numeric",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.sw_version_master }}"
+			},
+                        "refresh": 86400
+		},
+		{
+			"name": "sw_version_slave",
+			"register": "0x0458",
+			"read_type": "string",
+			"registers": 3,
+			"ha": {
+				"name": "DSP2 Software Version",
+				"icon": "mdi:numeric",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.sw_version_slave }}"
+			},
+                        "refresh": 86400
+		},
+		{
+			"name": "energy_storage_mode",
+			"register": "0x1110",
+			"desc": "Storage mode",
+			"type": "U16",
+			"function": "mode",
+			"modes": {
+				"0": "Self use",
+				"1": "Time of use",
+				"2": "Timing mode",
+				"3": "Passive mode",
+				"4": "Peak cut mode"
+			},
+			"write": true,
+			"ha": {
+				"command_topic": "sofar/rw/energy_storage_mode",
+				"entity_category": "config",
+				"name": "Mode",
+				"options": [
+					"Self use",
+					"Time of use",
+					"Timing mode",
+					"Passive mode",
+					"Peak cut mode"
+				],
+				"value_template": "{{ value_json.energy_storage_mode }}",
+				"icon": "mdi:auto-mode",
+				"control": "select"
+			}
+		},
+		{
+			"name": "charge_start_time",
+			"register": "0x1113",
+                        "refresh": 3600
+		},
+		{
+			"name": "charge_end_time",
+			"register": "0x1114",
+                        "refresh": 3600
+		},
+		{
+			"name": "discharge_start_time",
+			"register": "0x1115",
+                        "refresh": 3600
+		},
+		{
+			"name": "discharge_end_time",
+			"register": "0x1116",
+                        "refresh": 3600
+		},
+		{
+			"name": "charge_power",
+			"register": "0x1117",
+			"function": "multiply",
+			"factor": 10,
+                        "refresh": 3600
+		},
+		{
+			"name": "discharge_power",
+			"register": "0x1118",
+			"function": "multiply",
+			"factor": 10,
+                        "refresh": 3600
+		},
+		{
+			"name": "time_of_use",
+			"register": "0x1121",
+			"function": "mode",
+			"modes": {
+				"0": "Disabled",
+				"1": "Enabled"
+			},
+			"ha": {
+				"name": "Time of use",
+				"icon": "mdi:home-clock",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.time_of_use }}"
+			},
+                        "refresh": 3600
+		},
+		{
+			"name": "time_of_use_charge_start_time",
+			"register": "0x1122",
+			"function": "high_bit_low_bit",
+			"join": ":",
+			"ha": {
+				"name": "Time of use - Start time",
+				"icon": "mdi:clock-digital",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.time_of_use_charge_start_time }}"
+			},
+                        "refresh": 3600
+		},
+		{
+			"name": "time_of_use_charge_end_time",
+			"register": "0x1123",
+			"function": "high_bit_low_bit",
+			"join": ":",
+			"ha": {
+				"name": "Time of use - End time",
+				"icon": "mdi:clock-digital",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.time_of_use_charge_end_time }}"
+			},
+                        "refresh": 3600
+		},
+		{
+			"name": "time_of_use_charge_soc",
+			"register": "0x1124",
+			"desc": "Time of use SOC (30 to 100)",
+			"function": "int",
+			"min": 30,
+			"max": 100,
+			"write": true,
+			"ha": {
+				"name": "Time of use - Target SOC",
+				"icon": "mdi:percent-outline",
+				"entity_category": "diagnostic",
+				"device_class": "battery",
+				"unit_of_measurement": "%",
+				"state_class": "measurement",
+				"value_template": "{{ value_json.time_of_use_charge_soc }}"
+			},
+                        "refresh": 3600
+		},
+		{
+			"name": "time_of_use_charge_power",
+			"register": "0x1125",
+			"read_type": "long",
+			"ha": {
+				"name": "Time of use - Power",
+				"icon": "mdi:lightning-bolt",
+				"device_class": "power",
+				"unit_of_measurement": "W",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.time_of_use_charge_power }}"
+			},
+                        "refresh": 3600
+		},
+		{
+			"name": "time_of_use_start_date",
+			"register": "0x1127",
+			"function": "high_bit_low_bit",
+			"join": "/",
+			"ha": {
+				"name": "Time of use - Start date",
+				"icon": "mdi:calendar",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.time_of_use_start_date }}"
+			},
+                        "refresh": 3600
+		},
+		{
+			"name": "time_of_use_end_date",
+			"register": "0x1128",
+			"function": "high_bit_low_bit",
+			"join": "/",
+			"ha": {
+				"name": "Time of use - End date",
+				"icon": "mdi:calendar",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.time_of_use_end_date }}"
+			},
+                        "refresh": 3600
+		},
+		{
+			"name": "time_of_use_dow",
+			"register": "0x1129",
+			"function": "bit_field",
+			"fields": [
+				"Sun",
+				"Sat",
+				"Fri",
+				"Thu",
+				"Wed",
+				"Tue",
+				"Mon"
+			],
+			"ha": {
+				"name": "Time of use - Days of week",
+				"icon": "mdi:calendar-today",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.time_of_use_dow }}"
+			},
+                        "refresh": 3600
+		},
+		{
+			"name": "desired_power",
+			"register": "0x1187",
+			"desc": "Desired PCC power in passive mode(-999999 to 999999) in watts",
+			"desc2": "Positive value=Export, Negative value=Import",
+			"desc3": "Reading 0x1189 will always return 0. Min is typically -6000 or the value set to 0x1189. Max is typically +6000 or the value set to 0x1189",
+			"type": "I32",
+			"function": "int",
+			"signed": true,
+			"passive": true,
+			"min": -999999,
+			"max": 999999,
+			"write": true,
+			"aggregate": [
+				"minimum_battery_power",
+				"maximum_battery_power"
+			],
+			"agg_function": "avg",
+			"ha": {
+				"command_topic": "sofar/rw/desired_power",
+				"entity_category": "config",
+				"name": "Desired Power",
+				"min": -5000,
+				"max": 5000,
+				"step": 500,
+				"initial": 0,
+				"mode": "slider",
+				"value_template": "{{ value_json.desired_power }}",
+				"icon": "mdi:battery-charging",
+				"control": "number"
+			}
+		},
+		{
+			"name": "minimum_battery_power",
+			"register": "0x1189",
+			"desc": "Minimum battery power in passive mode(-999999 to 999999) in watts",
+			"desc2": "Positive value=Charging, Negative value=Discharging",
+			"signed": true,
+			"read_type": "long"
+		},
+		{
+			"name": "maximum_battery_power",
+			"register": "0x118B",
+			"desc": "Maximum battery power in passive mode(-999999 to 999999) in watts",
+			"desc2": "Positive value=Charging, Negative value=Discharging",
+			"signed": true,
+			"read_type": "long"
+		},
+		{
+			"name": "state",
+			"register": "0x0404",
+			"function": "mode",
+			"modes": {
+				"0": "Waiting",
+				"1": "Checking",
+				"2": "On-grid",
+				"3": "Emergency Mode",
+				"4": "Recoverable Fault",
+				"5": "Permanent Fault",
+				"6": "Upgarding",
+				"7": "Self-charging"
+			},
+			"ha": {
+				"name": "State",
+				"icon": "mdi:power-standby",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.state }}"
+			}
+		},
+		{
+			"name": "pv_1_voltage",
+			"register": "0x0584",
+			"function": "divide",
+			"factor": 10,
+			"ha": {
+				"device_class": "voltage",
+				"unit_of_measurement": "V",
+				"name": "PV1 Voltage",
+				"icon": "mdi:alpha-v-box",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.pv_1_voltage }}"
+			}
+		},
+		{
+			"name": "pv_1_current",
+			"register": "0x0585",
+			"function": "divide",
+			"factor": 100,
+			"ha": {
+				"device_class": "current",
+				"unit_of_measurement": "A",
+				"name": "PV1 Current",
+				"icon": "mdi:alpha-a-box",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.pv_1_current }}"
+			}
+		},
+		{
+			"name": "pv_1_power",
+			"register": "0x0586",
+			"function": "multiply",
+			"factor": 10,
+			"ha": {
+				"device_class": "power",
+				"unit_of_measurement": "W",
+				"name": "PV1 Power",
+				"icon": "mdi:solar-power",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.pv_1_power }}"
+			}
+		},
+		{
+			"name": "pv_2_voltage",
+			"register": "0x0587",
+			"function": "divide",
+			"factor": 10,
+			"ha": {
+				"device_class": "voltage",
+				"unit_of_measurement": "V",
+				"name": "PV2 Voltage",
+				"icon": "mdi:alpha-v-box",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.pv_2_voltage }}"
+			}
+		},
+		{
+			"name": "pv_2_current",
+			"register": "0x0588",
+			"function": "divide",
+			"factor": 100,
+			"ha": {
+				"device_class": "current",
+				"unit_of_measurement": "A",
+				"name": "PV2 Current",
+				"icon": "mdi:alpha-a-box",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.pv_2_current }}"
+			}
+		},
+		{
+			"name": "pv_2_power",
+			"register": "0x0589",
+			"function": "multiply",
+			"factor": 10,
+			"ha": {
+				"device_class": "power",
+				"unit_of_measurement": "W",
+				"name": "PV2 Power",
+				"icon": "mdi:solar-power",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.pv_2_power }}"
+			}
+		},
+		{
+			"name": "pv_total_power",
+			"aggregate": [
+				"pv_1_power",
+				"pv_2_power"
+			],
+			"agg_function": "add",
+			"ha": {
+				"device_class": "power",
+				"unit_of_measurement": "W",
+				"name": "PV Total Power",
+				"icon": "mdi:solar-power",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.pv_total_power }}"
+			}
+		},
+		{
+			"name": "active_power",
+			"register": "0x0485",
+			"function": "multiply",
+			"factor": 10,
+			"signed": true,
+			"ha": {
+				"device_class": "power",
+				"name": "Active Power",
+				"icon": "mdi:lightning-bolt",
+				"state_class": "measurement",
+				"unit_of_measurement": "W",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.active_power }}"
+			}
+		},
+		{
+			"name": "load_power",
+			"register": "0x04AF",
+			"function": "multiply",
+			"factor": 10,
+			"ha": {
+				"device_class": "power",
+				"name": "Load Power",
+				"icon": "mdi:home-lightning-bolt-outline",
+				"state_class": "measurement",
+				"unit_of_measurement": "W",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.load_power }}"
+			}
+		},
+		{
+			"name": "grid",
+			"aggregate": [
+				"load_power",
+				"active_power"
+			],
+			"agg_function": "subtract",
+			"invert": false,
+			"ha": {
+				"device_class": "power",
+				"name": "On-Grid Power",
+				"icon": "mdi:lightning-bolt",
+				"state_class": "measurement",
+				"unit_of_measurement": "W",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.grid }}"
+			}
+		},
+		{
+			"name": "insulation_resistance",
+			"register": "0x042B",
+			"ha": {
+				"name": "Insulation resistance",
+				"icon": "mdi:omega",
+				"unit_of_measurement": "Ohms",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.insulation_resistance }}"
+			},
+                        "refresh": 3600
+		},
+		{
+			"name": "ongrid_frequency",
+			"register": "0x0484",
+			"function": "divide",
+			"factor": 100,
+			"ha": {
+				"device_class": "frequency",
+				"name": "On-grid Frequency",
+				"icon": "mdi:sine-wave",
+				"state_class": "measurement",
+				"unit_of_measurement": "Hz",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.ongrid_frequency }}"
+			},
+                        "refresh": 60
+		},
+		{
+			"name": "ongrid_voltage",
+			"register": "0x048D",
+			"function": "divide",
+			"factor": 10,
+			"ha": {
+				"device_class": "voltage",
+				"unit_of_measurement": "V",
+				"name": "On-grid Voltage",
+				"icon": "mdi:alpha-v-box",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.ongrid_voltage }}"
+			},
+                        "refresh": 60
+		},
+		{
+			"name": "inverter_temp_internal",
+			"register": "0x0418",
+			"ha": {
+				"device_class": "temperature",
+				"unit_of_measurement": "°C",
+				"name": "Internal Temperature",
+				"icon": "mdi:temperature-celsius",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.inverter_temp_internal }}"
+			}
+		},
+		{
+			"name": "inverter_temp_heatsink",
+			"register": "0x041A",
+			"ha": {
+				"device_class": "temperature",
+				"unit_of_measurement": "°C",
+				"name": "Heatsink Temperature",
+				"icon": "mdi:temperature-celsius",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.inverter_temp_heatsink }}"
+			}
+		},
+		{
+			"name": "offgrid_active_power",
+			"register": "0x0504",
+			"function": "multiply",
+			"factor": 10,
+			"ha": {
+				"device_class": "power",
+				"unit_of_measurement": "W",
+				"name": "Off-Grid Power",
+				"icon": "mdi:lightning-bolt",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.offgrid_active_power }}"
+			}
+		},
+		{
+			"name": "offgrid_frequency",
+			"register": "0x0507",
+			"function": "divide",
+			"factor": 100,
+			"ha": {
+				"device_class": "frequency",
+				"unit_of_measurement": "Hz",
+				"name": "Off-Grid Frequency",
+				"icon": "mdi:sine-wave",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.offgrid_frequency }}"
+			},
+                        "refresh": 60
+		},
+		{
+			"name": "offgrid_voltage",
+			"register": "0x050A",
+			"function": "divide",
+			"factor": 10,
+			"ha": {
+				"device_class": "voltage",
+				"unit_of_measurement": "V",
+				"name": "Off-Grid Voltage",
+				"icon": "mdi:alpha-v-box",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.offgrid_voltage }}"
+			},
+                        "refresh": 60
+		},
+		{
+			"name": "battery_current",
+			"register": "0x0605",
+			"function": "divide",
+			"factor": 100,
+			"signed": true,
+			"ha": {
+				"device_class": "current",
+				"unit_of_measurement": "A",
+				"name": "Battery Current",
+				"icon": "mdi:alpha-a-box",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.battery_current }}"
+			}
+		},
+		{
+			"name": "battery_power",
+			"register": "0x0606",
+			"function": "multiply",
+			"factor": 10,
+			"signed": true,
+			"ha": {
+				"device_class": "power",
+				"unit_of_measurement": "W",
+				"name": "Battery Power",
+				"icon": "mdi:battery-charging",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.battery_power }}"
+			}
+		},
+		{
+			"name": "today_generation",
+			"register": "0x0685",
+			"function": "divide",
+			"factor": 100,
+			"ha": {
+				"device_class": "energy",
+				"unit_of_measurement": "kWh",
+				"name": "Solar Generation Today",
+				"icon": "mdi:solar-power-variant",
+				"state_class": "total_increasing",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.today_generation }}"
+			},
+                        "refresh": 60
+		},
+		{
+			"name": "today_consumption",
+			"register": "0x0689",
+			"function": "divide",
+			"factor": 100,
+			"ha": {
+				"device_class": "energy",
+				"unit_of_measurement": "kWh",
+				"name": "Consumption Today",
+				"icon": "mdi:home-lightning-bolt-outline",
+				"state_class": "total_increasing",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.today_consumption }}"
+			},
+                        "refresh": 60
+		},
+		{
+			"name": "today_import",
+			"register": "0x068D",
+			"function": "divide",
+			"factor": 100,
+			"ha": {
+				"device_class": "energy",
+				"unit_of_measurement": "kWh",
+				"name": "Import Today",
+				"icon": "mdi:transmission-tower-import",
+				"state_class": "total_increasing",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.today_import }}"
+			},
+                        "refresh": 60
+		},
+		{
+			"name": "today_export",
+			"register": "0x0691",
+			"function": "divide",
+			"factor": 100,
+			"ha": {
+				"device_class": "energy",
+				"unit_of_measurement": "kWh",
+				"name": "Export Today",
+				"icon": "mdi:transmission-tower-export",
+				"state_class": "total_increasing",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.today_export }}"
+			},
+                        "refresh": 60
+		},
+		{
+			"name": "today_battery_discharge",
+			"register": "0x0699",
+			"function": "divide",
+			"factor": 100,
+			"ha": {
+				"device_class": "energy",
+				"unit_of_measurement": "kWh",
+				"name": "Battery Discharge Today",
+				"icon": "mdi:battery-minus-variant",
+				"state_class": "total_increasing",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.today_battery_discharge }}"
+			},
+                        "refresh": 60
+		},
+		{
+			"name": "today_battery_charge",
+			"register": "0x0695",
+			"function": "divide",
+			"factor": 100,
+			"ha": {
+				"device_class": "energy",
+				"unit_of_measurement": "kWh",
+				"name": "Battery Charge Today",
+				"icon": "mdi:battery-plus-variant",
+				"state_class": "total_increasing",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.today_battery_charge }}"
+			},
+                        "refresh": 60
+		},
+		{
+			"name": "battery_voltage",
+			"register": "0x0604",
+			"function": "divide",
+			"factor": 10,
+			"ha": {
+				"device_class": "voltage",
+				"unit_of_measurement": "V",
+				"name": "Battery Voltage",
+				"icon": "mdi:alpha-v-box",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.battery_voltage }}"
+			}
+		},
+		{
+			"name": "battery_temp",
+			"register": "0x0607",
+			"signed": true,
+			"ha": {
+				"device_class": "temperature",
+				"unit_of_measurement": "°C",
+				"name": "Battery Temperature",
+				"icon": "mdi:temperature-celsius",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.battery_temp }}"
+			}
+		},
+		{
+			"name": "battery_soc",
+			"register": "0x0608",
+			"ha": {
+				"device_class": "battery",
+				"unit_of_measurement": "%",
+				"name": "Battery SOC",
+				"icon": "mdi:battery-80",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.battery_soc }}"
+			},
+			"min": 0,
+			"max": 100
+		},
+		{
+			"name": "battery_soh",
+			"register": "0x0609",
+			"ha": {
+				"device_class": "battery",
+				"unit_of_measurement": "%",
+				"name": "Battery SOH",
+				"icon": "mdi:battery-heart-variant",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.battery_soh }}"
+			},
+                        "refresh": 3600
+		},
+		{
+			"name": "battery_cycles",
+			"register": "0x060A",
+			"ha": {
+				"device_class": "battery",
+				"unit_of_measurement": "%",
+				"name": "Battery Cycles",
+				"icon": "mdi:battery-sync",
+				"state_class": "measurement",
+				"entity_category": "diagnostic",
+				"value_template": "{{ value_json.battery_cycles }}"
+			},
+                        "refresh": 3600
+		},
+		{
+			"name": "eps_control",
+			"register": "0x1029",
+			"desc": "EPS On/Off control",
+			"type": "U16",
+			"function": "mode",
+			"modes": {
+				"0": "Off",
+				"1": "On"
+			},
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		},
+		{
+			"name": "remote_on_off_control",
+			"register": "0x1104",
+			"desc": "Turn inverter on/off",
+			"type": "U16",
+			"function": "mode",
+			"modes": {
+				"0": "Off",
+				"1": "On"
+			},
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		},
+		{
+			"name": "power_control",
+			"register": "0x1105",
+			"desc": "AC power control settings (0 to 100%)",
+			"type": "U16",
+			"min": 0,
+			"max": 100,
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		},
+		{
+			"name": "active_power_export_limit",
+			"register": "0x1106",
+			"desc": "AC output active power maximum percentage (0 to 100%)",
+			"type": "U16",
+			"min": 0,
+			"max": 100,
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		},
+		{
+			"name": "active_power_import_limit",
+			"register": "0x1107",
+			"desc": "AC input active power maximum percentage (0 to 100%)",
+			"type": "U16",
+			"min": 0,
+			"max": 100,
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		},
+		{
+			"name": "reactive_power_setting",
+			"register": "0x1108",
+			"desc": "AC reactive power percentage (-100 to 100%)",
+			"type": "I16",
+			"min": -100,
+			"max": 100,
+			"signed": true,
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		},
+		{
+			"name": "power_factor_setting",
+			"register": "0x1109",
+			"desc": "AC power factor (-1.00 to 1.00)",
+			"type": "I16",
+			"min": -1.00,
+			"max": 1.0,
+			"signed": true,
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		},
+		{
+			"name": "active_power_limit_speed",
+			"register": "0x110a",
+			"desc": "The charge rate of active power (1 to 3000%)",
+			"type": "U16",
+			"min": 1,
+			"max": 3000,
+			"signed": true,
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		},
+		{
+			"name": "reactive_power_response_time",
+			"register": "0x110b",
+			"desc": "Reactive power response time in secs (0.1 to 600)",
+			"type": "U16",
+			"min": 0.1,
+			"max": 600,
+			"signed": true,
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		},
+		{
+			"name": "passive_timeout",
+			"register": "0x1184",
+			"desc": "Passive mode timeout period in secs (0=Never)",
+			"desc2": "When the inverter does not receive any communication frame within time set in this register the inverter forces Passive_Timeout_Action",
+			"type": "U16",
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		},
+		{
+			"name": "passive_timeout_action",
+			"register": "0x1185",
+			"desc": "Passive mode timeout action",
+			"function": "mode",
+			"type": "U16",
+			"modes": {
+				"0": "Force to standby",
+				"1": "Force to last storage mode"
+			},
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		},
+		{
+			"name": "desired_power_grid",
+			"register": "0x118D",
+			"desc": "Maximum power to grid in passive mode(-999999 to 999999) in watts",
+			"desc2": "Positive value=Charging, Negative value=Discharging",
+			"type": "I32",
+			"function": "int",
+			"signed": true,
+			"passive": true,
+			"min": -999999,
+			"max": 999999,
+			"write": true,
+			"untested": true,
+                        "refresh": 86400
+		}
+	]
+}
